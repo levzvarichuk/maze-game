@@ -1,0 +1,90 @@
+{
+  "id": "level1",
+  "cols": 15,
+  "rows": 15,
+  "tileSize": 40,
+  "grid": [
+    "###############",
+    "#@..#........N#",
+    "#..N#....#....#",
+    "##.####.##.####",
+    "#....#....#...#",
+    "#.##.#.##.#.###",
+    "#....N.#..#..T#",
+    "#.##.###.##.#.#",
+    "#....#....#.#.#",
+    "##.###.####.#.#",
+    "#....#.N....#.#",
+    "#.##.####.###.#",
+    "#..N.......#..#",
+    "#.###########.#",
+    "###############"
+  ],
+  "npcs": [
+    {
+      "id": "guard_north",
+      "x": 13, "y": 1,
+      "name": "Северный страж",
+      "riddle": {
+        "question": "TODO: вопрос от copy.md (этап 6)",
+        "options": [
+          { "text": "TODO вариант A", "correct": true,  "onSolve": "Проходи." },
+          { "text": "TODO вариант B", "correct": false, "hint": "Подумай ещё." },
+          { "text": "TODO вариант C", "correct": false, "hint": "Не то." }
+        ]
+      }
+    },
+    {
+      "id": "guard_scribe",
+      "x": 3, "y": 2,
+      "name": "Писарь",
+      "riddle": {
+        "question": "TODO: вопрос от copy.md",
+        "options": [
+          { "text": "TODO A", "correct": true,  "onSolve": "Верно!" },
+          { "text": "TODO B", "correct": false, "hint": "Мимо." },
+          { "text": "TODO C", "correct": false, "hint": "Ошибка." }
+        ]
+      }
+    },
+    {
+      "id": "guard_center",
+      "x": 5, "y": 6,
+      "name": "Хранитель",
+      "riddle": {
+        "question": "TODO: вопрос от copy.md",
+        "options": [
+          { "text": "TODO A", "correct": false, "hint": "Не то." },
+          { "text": "TODO B", "correct": true,  "onSolve": "Мудро." },
+          { "text": "TODO C", "correct": false, "hint": "Подумай." }
+        ]
+      }
+    },
+    {
+      "id": "guard_south",
+      "x": 7, "y": 10,
+      "name": "Южный дозор",
+      "riddle": {
+        "question": "TODO: вопрос от copy.md",
+        "options": [
+          { "text": "TODO A", "correct": false, "hint": "Нет." },
+          { "text": "TODO B", "correct": false, "hint": "Ещё." },
+          { "text": "TODO C", "correct": true,  "onSolve": "Точно." }
+        ]
+      }
+    },
+    {
+      "id": "guard_gate",
+      "x": 3, "y": 12,
+      "name": "У ворот клада",
+      "riddle": {
+        "question": "TODO: вопрос от copy.md",
+        "options": [
+          { "text": "TODO A", "correct": true,  "onSolve": "Клад твой." },
+          { "text": "TODO B", "correct": false, "hint": "Мимо." },
+          { "text": "TODO C", "correct": false, "hint": "Не то." }
+        ]
+      }
+    }
+  ]
+}

@@ -1,16 +1,25 @@
+import { loadLevel, findPlayerStart, findTreasure } from './entities/maze.js';
+import { drawMaze } from './ui/renderer.js';
+
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const status = document.getElementById('status');
 
-ctx.fillStyle = '#0f0f1a';
-ctx.fillRect(0, 0, canvas.width, canvas.height);
+async function main() {
+  status.textContent = 'Загрузка уровня...';
+  const level = await loadLevel('./src/content/level1.json');
 
-ctx.fillStyle = '#eaeaea';
-ctx.font = '20px system-ui';
-ctx.textAlign = 'center';
-ctx.fillText('Этап 0 — setup готов', canvas.width / 2, canvas.height / 2);
-ctx.font = '14px system-ui';
-ctx.fillStyle = '#8888aa';
-ctx.fillText('Дальше: сетка лабиринта (этап 1)', canvas.width / 2, canvas.height / 2 + 30);
+  canvas.width = level.cols * level.tileSize;
+  canvas.height = level.rows * level.tileSize;
 
-status.textContent = 'Проект запущен';
+  drawMaze(ctx, level);
+
+  const start = findPlayerStart(level);
+  const treasure = findTreasure(level);
+  status.textContent = `Готово. Старт: (${start.x},${start.y}) · Клад: (${treasure.x},${treasure.y})`;
+}
+
+main().catch((err) => {
+  console.error(err);
+  status.textContent = 'Ошибка: ' + err.message;
+});
