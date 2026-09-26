@@ -1,5 +1,7 @@
 {
   "id": "level1",
+  "setting": "dungeon",
+  "title": "Древнее подземелье",
   "cols": 15,
   "rows": 15,
   "tileSize": 40,

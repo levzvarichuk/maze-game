@@ -7,11 +7,21 @@ const COLORS = {
   floorGrid: '#22223b',
   treasure: '#f7d774',
   treasureShine: '#fff3b0',
+  player: '#7ed6a5',
+  playerEdge: '#c8f7dc',
+  npc: '#b04a4a',
+  npcSolved: '#4a6a4a',
+  npcHalo: '#f0a0a0',
 };
 
-export function drawMaze(ctx, level) {
-  const { cols, rows, tileSize, grid } = level;
+export function drawScene(ctx, level, player, npcs) {
+  drawMaze(ctx, level);
+  drawNPCs(ctx, level, npcs);
+  drawPlayer(ctx, level, player);
+}
 
+function drawMaze(ctx, level) {
+  const { cols, rows, tileSize, grid } = level;
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
       const ch = grid[y][x];
@@ -50,4 +60,46 @@ function drawTreasure(ctx, px, py, size) {
   ctx.beginPath();
   ctx.arc(cx - size * 0.08, cy - size * 0.08, size * 0.08, 0, Math.PI * 2);
   ctx.fill();
+}
+
+function drawPlayer(ctx, level, player) {
+  const size = level.tileSize;
+  const px = player.x * size;
+  const py = player.y * size;
+  const cx = px + size / 2;
+  const cy = py + size / 2;
+
+  ctx.fillStyle = COLORS.player;
+  ctx.beginPath();
+  ctx.arc(cx, cy, size * 0.32, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = COLORS.playerEdge;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function drawNPCs(ctx, level, npcs) {
+  const size = level.tileSize;
+  for (const n of npcs) {
+    const px = n.x * size;
+    const py = n.y * size;
+    const cx = px + size / 2;
+    const cy = py + size / 2;
+
+    ctx.fillStyle = n.solved ? COLORS.npcSolved : COLORS.npcHalo;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.42, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = n.solved ? '#2a3a2a' : COLORS.npc;
+    ctx.beginPath();
+    ctx.arc(cx, cy, size * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#eaeaea';
+    ctx.font = `bold ${Math.floor(size * 0.5)}px system-ui`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(n.solved ? '✓' : '?', cx, cy + 1);
+  }
 }
