@@ -1,0 +1,10 @@
+{
+  "name": "maze-game",
+  "version": "0.1.0",
+  "description": "Лабиринт с загадками и кладом",
+  "type": "module",
+  "scripts": {
+    "dev": "python3 -m http.server 5173",
+    "start": "python3 -m http.server 5173"
+  }
+}
