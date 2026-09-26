@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Лабиринт с загадками</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1a2e'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23f7d774'/%3E%3Ccircle cx='13' cy='13' r='2.5' fill='%23fff3b0'/%3E%3C/svg%3E" />
     <style>
       :root {
         --bg: #1a1a2e;
@@ -48,6 +49,32 @@
       kbd {
         background: #444; padding: 2px 6px;
         border-radius: 4px; font-size: 12px;
+      }
+      .hint {
+        min-height: 20px;
+        color: var(--accent);
+        font-size: 13px;
+        font-style: italic;
+      }
+      #mute-btn {
+        margin-top: 12px;
+        background: transparent;
+        color: var(--muted);
+        border: 1px solid var(--border);
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      #mute-btn:hover { color: var(--text); border-color: var(--accent); }
+      @keyframes pop {
+        from { transform: scale(0.9); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
+      }
+      #dialog-overlay.open #dialog-box,
+      #win-overlay.open #win-box {
+        animation: pop 0.18s ease-out;
       }
 
       /* Диалог-модалка */
@@ -143,6 +170,8 @@
         <p>Говорить: <kbd>Enter</kbd></p>
         <p>Загадок решено: <span id="solved-count">0/0</span></p>
         <p id="status">Загрузка...</p>
+        <p id="hint" class="hint"></p>
+        <button id="mute-btn" type="button">🔊 Звук</button>
       </aside>
     </div>
 

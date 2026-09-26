@@ -10,7 +10,9 @@ export function bindInput(handlers) {
       case 'ArrowRight': case 'd': case 'D': case 'в': case 'В':
         handlers.move?.(1, 0); e.preventDefault(); break;
       case 'Enter': case ' ':
-        handlers.interact?.(); e.preventDefault(); break;
+        // preventDefault не ставим: иначе Enter/Space не активируют
+        // фокус-кнопки в модалке диалога.
+        handlers.interact?.(); break;
       case 'Escape':
         handlers.cancel?.(); break;
     }

@@ -1,3 +1,5 @@
+import { sounds } from '../game/audio.js';
+
 const overlay = () => document.getElementById('dialog-overlay');
 const nameEl = () => document.getElementById('dialog-name');
 const questionEl = () => document.getElementById('dialog-question');
@@ -29,6 +31,7 @@ function handleChoice(btn, opt, npc, onSolved) {
     disableAll();
     feedbackEl().textContent = '✓ ' + (opt.onSolve || 'Верно.');
     feedbackEl().className = 'correct';
+    sounds.correct();
     setTimeout(() => {
       closeDialogue();
       onSolved(npc);
@@ -38,6 +41,7 @@ function handleChoice(btn, opt, npc, onSolved) {
     btn.disabled = true;
     feedbackEl().textContent = '✗ ' + (opt.hint || 'Не то.');
     feedbackEl().className = 'wrong';
+    sounds.wrong();
   }
 }
 

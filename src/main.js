@@ -6,14 +6,17 @@ import { bindInput } from './game/input.js';
 import { createState, STATE } from './game/state.js';
 import { drawScene } from './ui/renderer.js';
 import { openDialogue, closeDialogue, isDialogueOpen } from './ui/dialogue.js';
+import { sounds, toggleMute, isEnabled } from './game/audio.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const statusEl = document.getElementById('status');
 const solvedEl = document.getElementById('solved-count');
 const titleEl = document.getElementById('level-title');
+const hintEl = document.getElementById('hint');
 const winOverlay = document.getElementById('win-overlay');
 const winRestart = document.getElementById('win-restart');
+const muteBtn = document.getElementById('mute-btn');
 
 async function main() {
   statusEl.textContent = 'Загрузка...';
@@ -37,36 +40,52 @@ async function main() {
   const treasure = findTreasure(level);
 
   const render = () => drawScene(ctx, level, player, npcs);
+  const solvedCount = () => npcs.filter((n) => n.solved).length;
+  const onTreasure = () => player.x === treasure.x && player.y === treasure.y;
 
   const updateHUD = () => {
-    const solved = npcs.filter((n) => n.solved).length;
-    solvedEl.textContent = `${solved}/${npcs.length}`;
+    solvedEl.textContent = `${solvedCount()}/${npcs.length}`;
     if (state.current === STATE.WIN) {
       statusEl.textContent = '🏆 Клад твой!';
+      hintEl.textContent = '';
     } else if (state.current === STATE.DIALOGUE) {
       statusEl.textContent = 'Идёт разговор...';
+      hintEl.textContent = '';
+    } else if (onTreasure() && solvedCount() < npcs.length) {
+      const left = npcs.length - solvedCount();
+      statusEl.textContent = `Клад запечатан. Осталось загадок: ${left}.`;
+      hintEl.textContent = '';
     } else {
       statusEl.textContent = `Позиция: (${player.x}, ${player.y})`;
+      const near = findAdjacentNPC(npcs, player);
+      hintEl.textContent = near ? `Рядом: ${near.name}. Enter — говорить.` : '';
     }
   };
 
   const checkWin = () => {
-    if (player.x === treasure.x && player.y === treasure.y) {
-      state.current = STATE.WIN;
-      winOverlay.classList.add('open');
-      return true;
-    }
-    return false;
+    if (!onTreasure()) return 'none';
+    if (solvedCount() < npcs.length) return 'locked';
+    state.current = STATE.WIN;
+    winOverlay.classList.add('open');
+    sounds.win();
+    return 'win';
   };
 
   winRestart.addEventListener('click', () => location.reload());
+
+  muteBtn.addEventListener('click', () => {
+    const on = toggleMute();
+    muteBtn.textContent = on ? '🔊 Звук' : '🔇 Тихо';
+  });
 
   bindInput({
     move: (dx, dy) => {
       if (state.current !== STATE.EXPLORING) return;
       if (tryMove(player, dx, dy, canMove)) {
+        sounds.step();
         render();
-        if (checkWin()) return updateHUD();
+        const result = checkWin();
+        if (result === 'locked') sounds.locked();
         updateHUD();
       }
     },
@@ -97,6 +116,7 @@ async function main() {
     },
   });
 
+  muteBtn.textContent = isEnabled() ? '🔊 Звук' : '🔇 Тихо';
   render();
   updateHUD();
 }
