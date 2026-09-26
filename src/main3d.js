@@ -1,15 +1,18 @@
 import { loadLevel, findPlayerStart, findTreasure } from './entities/maze.js';
-import { createPlayer, tryMove } from './entities/player.js';
 import { createNPCs, applyRiddles, findAdjacentNPC } from './entities/npc.js';
 import { makeCanMove } from './game/collision.js';
-import { bindInput } from './game/input.js';
+import { bindInput3D } from './game/input3d.js';
 import { createState, STATE } from './game/state.js';
-import { drawScene } from './ui/renderer.js';
 import { openDialogue, closeDialogue, isDialogueOpen } from './ui/dialogue.js';
 import { sounds, toggleMute, isEnabled, startAmbient } from './game/audio.js';
+import {
+  createPlayer3D, forwardStep, backwardStep, turnLeft, turnRight,
+  tryMoveWithDir, headingToYaw,
+} from './entities/player3d.js';
+import { buildScene, tween, shortestAngle, drawMinimap } from './ui/scene3d.js';
 
-const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d');
+const sceneCanvas = document.getElementById('scene');
+const minimapCanvas = document.getElementById('minimap');
 const statusEl = document.getElementById('status');
 const solvedEl = document.getElementById('solved-count');
 const titleEl = document.getElementById('level-title');
@@ -19,7 +22,7 @@ const winRestart = document.getElementById('win-restart');
 const muteBtn = document.getElementById('mute-btn');
 
 async function main() {
-  statusEl.textContent = 'Загрузка...';
+  statusEl.textContent = 'Загрузка 3D-сцены...';
 
   const [level, riddles] = await Promise.all([
     loadLevel('./src/content/level1.json'),
@@ -28,20 +31,26 @@ async function main() {
       .catch(() => null),
   ]);
 
-  if (level.title) titleEl.textContent = level.title;
+  if (level.title) titleEl.textContent = level.title + ' · 3D';
 
-  canvas.width = level.cols * level.tileSize;
-  canvas.height = level.rows * level.tileSize;
-
-  const player = createPlayer(findPlayerStart(level));
+  const player = createPlayer3D(findPlayerStart(level));
   const npcs = applyRiddles(createNPCs(level), riddles);
   const state = createState();
   const canMove = makeCanMove(level, npcs);
-  const treasure = findTreasure(level);
+  const treasurePos = findTreasure(level);
 
-  const render = () => drawScene(ctx, level, player, npcs);
+  const scene = buildScene(sceneCanvas, level);
+  scene.setTreasurePosition(treasurePos.x, treasurePos.y);
+
+  const camState = {
+    x: player.x,
+    z: player.y,
+    yaw: headingToYaw(player.heading),
+  };
+  let animating = false;
+
   const solvedCount = () => npcs.filter((n) => n.solved).length;
-  const onTreasure = () => player.x === treasure.x && player.y === treasure.y;
+  const onTreasure = () => player.x === treasurePos.x && player.y === treasurePos.y;
 
   const updateHUD = () => {
     solvedEl.textContent = `${solvedCount()}/${npcs.length}`;
@@ -56,10 +65,12 @@ async function main() {
       statusEl.textContent = `Клад запечатан. Осталось загадок: ${left}.`;
       hintEl.textContent = '';
     } else {
-      statusEl.textContent = `Позиция: (${player.x}, ${player.y})`;
+      const dirName = ['север', 'восток', 'юг', 'запад'][player.heading];
+      statusEl.textContent = `(${player.x}, ${player.y}) · смотришь на ${dirName}`;
       const near = findAdjacentNPC(npcs, player);
       hintEl.textContent = near ? `Рядом: ${near.name}. Enter — говорить.` : '';
     }
+    drawMinimap(minimapCanvas, level, player, npcs, treasurePos);
   };
 
   const checkWin = () => {
@@ -71,23 +82,52 @@ async function main() {
     return 'win';
   };
 
-  winRestart.addEventListener('click', () => location.reload());
+  const moveAnim = () => {
+    animating = true;
+    tween(camState.x, player.x, 220, (v) => { camState.x = v; });
+    tween(camState.z, player.y, 220, (v) => { camState.z = v; }, () => {
+      animating = false;
+      const r = checkWin();
+      if (r === 'locked') sounds.locked();
+      updateHUD();
+    });
+  };
 
+  const turnAnim = () => {
+    animating = true;
+    const target = shortestAngle(camState.yaw, headingToYaw(player.heading));
+    tween(camState.yaw, target, 220, (v) => { camState.yaw = v; }, () => {
+      animating = false;
+      updateHUD();
+    });
+  };
+
+  winRestart.addEventListener('click', () => location.reload());
   muteBtn.addEventListener('click', () => {
     const on = toggleMute();
     muteBtn.textContent = on ? '🔊 Звук' : '🔇 Тихо';
   });
 
-  bindInput({
-    move: (dx, dy) => {
-      if (state.current !== STATE.EXPLORING) return;
-      if (tryMove(player, dx, dy, canMove)) {
-        sounds.step();
-        render();
-        const result = checkWin();
-        if (result === 'locked') sounds.locked();
-        updateHUD();
+  bindInput3D({
+    forward: () => {
+      if (animating || state.current !== STATE.EXPLORING) return;
+      if (tryMoveWithDir(player, forwardStep(player), canMove)) {
+        sounds.step(); moveAnim();
       }
+    },
+    backward: () => {
+      if (animating || state.current !== STATE.EXPLORING) return;
+      if (tryMoveWithDir(player, backwardStep(player), canMove)) {
+        sounds.step(); moveAnim();
+      }
+    },
+    turnLeft: () => {
+      if (animating || state.current !== STATE.EXPLORING) return;
+      turnLeft(player); turnAnim();
+    },
+    turnRight: () => {
+      if (animating || state.current !== STATE.EXPLORING) return;
+      turnRight(player); turnAnim();
     },
     interact: () => {
       if (state.current !== STATE.EXPLORING) return;
@@ -99,8 +139,8 @@ async function main() {
         near,
         (npc) => {
           npc.solved = true;
+          scene.updateNPCVisual(npc.id, true);
           state.current = STATE.EXPLORING;
-          render();
           updateHUD();
         },
         () => {
@@ -111,13 +151,18 @@ async function main() {
         }
       );
     },
-    cancel: () => {
-      if (isDialogueOpen()) closeDialogue();
-    },
+    cancel: () => { if (isDialogueOpen()) closeDialogue(); },
   });
 
   muteBtn.textContent = isEnabled() ? '🔊 Звук' : '🔇 Тихо';
-  render();
+
+  const t0 = performance.now();
+  const animate = () => {
+    const t = (performance.now() - t0) / 1000;
+    scene.tick(t, player, { x: camState.x, z: camState.z }, camState.yaw);
+    requestAnimationFrame(animate);
+  };
+  animate();
   updateHUD();
 
   const startMusic = () => startAmbient();

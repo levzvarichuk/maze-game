@@ -1,5 +1,7 @@
 let ctx = null;
 let enabled = true;
+let musicNode = null;
+let noteTimer = null;
 
 function getCtx() {
   if (!ctx) {
@@ -43,8 +45,79 @@ export const sounds = {
   locked:  () => beep({ freq: 140, dur: 0.22, type: 'sawtooth', gain: 0.05, sweep: -30 }),
 };
 
+/* ---------- Фоновая музыка: мрачный dungeon ambient ---------- */
+
+const AMBIENT_NOTES = [293.66, 349.23, 392.00, 440.00, 523.25]; // D-минор пентатоника
+const DRONE_FREQS = [73.42, 110.00]; // D2 + A2 (квинта)
+
+function scheduleAmbientNote() {
+  if (!musicNode) return;
+  const ac = getCtx();
+  if (!ac || !enabled) { noteTimer = setTimeout(scheduleAmbientNote, 4000); return; }
+
+  const freq = AMBIENT_NOTES[Math.floor(Math.random() * AMBIENT_NOTES.length)];
+  const now = ac.currentTime;
+  const dur = 3.5 + Math.random() * 2.5;
+
+  const osc = ac.createOscillator();
+  const g = ac.createGain();
+  osc.type = 'sine';
+  osc.frequency.value = freq;
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(0.02, now + 0.6);
+  g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+  osc.connect(g).connect(musicNode);
+  osc.start(now);
+  osc.stop(now + dur + 0.1);
+
+  noteTimer = setTimeout(scheduleAmbientNote, 4000 + Math.random() * 8000);
+}
+
+export function startAmbient() {
+  if (musicNode) return;
+  const ac = getCtx();
+  if (!ac) return;
+
+  musicNode = ac.createGain();
+  musicNode.gain.value = enabled ? 1 : 0;
+  musicNode.connect(ac.destination);
+
+  const now = ac.currentTime;
+  for (const f of DRONE_FREQS) {
+    const osc = ac.createOscillator();
+    const g = ac.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = f;
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.05, now + 2);
+    osc.connect(g).connect(musicNode);
+    osc.start(now);
+
+    const lfo = ac.createOscillator();
+    const lfoGain = ac.createGain();
+    lfo.frequency.value = 0.08 + Math.random() * 0.1;
+    lfoGain.gain.value = 2;
+    lfo.connect(lfoGain).connect(osc.frequency);
+    lfo.start(now);
+  }
+
+  noteTimer = setTimeout(scheduleAmbientNote, 3000);
+}
+
+export function stopAmbient() {
+  if (noteTimer) { clearTimeout(noteTimer); noteTimer = null; }
+  if (musicNode) {
+    const ac = getCtx();
+    if (ac) musicNode.gain.setTargetAtTime(0, ac.currentTime, 0.3);
+  }
+}
+
 export function toggleMute() {
   enabled = !enabled;
+  if (musicNode) {
+    const ac = getCtx();
+    if (ac) musicNode.gain.setTargetAtTime(enabled ? 1 : 0, ac.currentTime, 0.2);
+  }
   return enabled;
 }
 
