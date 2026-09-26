@@ -5,11 +5,15 @@ import { makeCanMove } from './game/collision.js';
 import { bindInput } from './game/input.js';
 import { createState, STATE } from './game/state.js';
 import { drawScene } from './ui/renderer.js';
+import { openDialogue, closeDialogue, isDialogueOpen } from './ui/dialogue.js';
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const statusEl = document.getElementById('status');
 const solvedEl = document.getElementById('solved-count');
+const titleEl = document.getElementById('level-title');
+const winOverlay = document.getElementById('win-overlay');
+const winRestart = document.getElementById('win-restart');
 
 async function main() {
   statusEl.textContent = 'Загрузка...';
@@ -20,6 +24,8 @@ async function main() {
       .then((r) => (r.ok ? r.json() : null))
       .catch(() => null),
   ]);
+
+  if (level.title) titleEl.textContent = level.title;
 
   canvas.width = level.cols * level.tileSize;
   canvas.height = level.rows * level.tileSize;
@@ -37,6 +43,8 @@ async function main() {
     solvedEl.textContent = `${solved}/${npcs.length}`;
     if (state.current === STATE.WIN) {
       statusEl.textContent = '🏆 Клад твой!';
+    } else if (state.current === STATE.DIALOGUE) {
+      statusEl.textContent = 'Идёт разговор...';
     } else {
       statusEl.textContent = `Позиция: (${player.x}, ${player.y})`;
     }
@@ -45,27 +53,47 @@ async function main() {
   const checkWin = () => {
     if (player.x === treasure.x && player.y === treasure.y) {
       state.current = STATE.WIN;
+      winOverlay.classList.add('open');
       return true;
     }
     return false;
   };
+
+  winRestart.addEventListener('click', () => location.reload());
 
   bindInput({
     move: (dx, dy) => {
       if (state.current !== STATE.EXPLORING) return;
       if (tryMove(player, dx, dy, canMove)) {
         render();
-        checkWin();
+        if (checkWin()) return updateHUD();
         updateHUD();
       }
     },
     interact: () => {
       if (state.current !== STATE.EXPLORING) return;
       const near = findAdjacentNPC(npcs, player);
-      if (near) {
-        // Этап 4 подставит модалку. Пока — превью текста в статусе.
-        statusEl.textContent = `${near.name}: ${near.riddle.question}`;
-      }
+      if (!near) return;
+      state.current = STATE.DIALOGUE;
+      updateHUD();
+      openDialogue(
+        near,
+        (npc) => {
+          npc.solved = true;
+          state.current = STATE.EXPLORING;
+          render();
+          updateHUD();
+        },
+        () => {
+          if (state.current === STATE.DIALOGUE) {
+            state.current = STATE.EXPLORING;
+            updateHUD();
+          }
+        }
+      );
+    },
+    cancel: () => {
+      if (isDialogueOpen()) closeDialogue();
     },
   });
 

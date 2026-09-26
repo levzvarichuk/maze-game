@@ -5,20 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Лабиринт с загадками</title>
     <style>
+      :root {
+        --bg: #1a1a2e;
+        --panel: #22223b;
+        --border: #3a3a5c;
+        --text: #eaeaea;
+        --muted: #8888aa;
+        --accent: #7ed6a5;
+        --wrong: #b04a4a;
+        --correct: #4a9a6a;
+      }
+      * { box-sizing: border-box; }
       body {
         margin: 0;
         min-height: 100vh;
         display: flex;
         align-items: center;
         justify-content: center;
-        background: #1a1a2e;
-        color: #eaeaea;
+        background: var(--bg);
+        color: var(--text);
         font-family: system-ui, -apple-system, sans-serif;
       }
       #game-root {
         display: flex;
         gap: 24px;
         align-items: flex-start;
+        padding: 24px;
       }
       canvas {
         background: #0f0f1a;
@@ -26,30 +38,131 @@
         image-rendering: pixelated;
       }
       #sidebar {
-        min-width: 200px;
+        min-width: 220px;
         padding: 16px;
-        background: #22223b;
+        background: var(--panel);
         border-radius: 8px;
       }
       h1 { margin: 0 0 12px; font-size: 18px; }
-      p  { margin: 4px 0; font-size: 14px; opacity: 0.9; }
+      p  { margin: 6px 0; font-size: 14px; opacity: 0.9; }
       kbd {
         background: #444; padding: 2px 6px;
         border-radius: 4px; font-size: 12px;
       }
+
+      /* Диалог-модалка */
+      #dialog-overlay, #win-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.75);
+        display: none;
+        align-items: center; justify-content: center;
+        z-index: 100;
+      }
+      #dialog-overlay.open, #win-overlay.open { display: flex; }
+
+      #dialog-box, #win-box {
+        max-width: 520px; width: 90%;
+        background: var(--panel);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        padding: 28px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      }
+      #dialog-name {
+        margin: 0 0 10px; font-size: 20px;
+        color: var(--accent);
+        letter-spacing: 0.5px;
+      }
+      #dialog-question {
+        margin: 0 0 20px; font-size: 16px;
+        line-height: 1.5;
+        color: var(--text);
+        font-style: italic;
+      }
+      #dialog-options {
+        display: flex; flex-direction: column; gap: 10px;
+      }
+      .dialog-option {
+        background: #2a2a4a;
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 15px;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+        font-family: inherit;
+      }
+      .dialog-option:hover:not(:disabled) {
+        background: #34345a; border-color: var(--accent);
+      }
+      .dialog-option:disabled {
+        opacity: 0.5; cursor: not-allowed;
+      }
+      .dialog-option.correct {
+        background: var(--correct); border-color: var(--accent);
+      }
+      .dialog-option.wrong {
+        background: #4a2a2a; border-color: var(--wrong);
+      }
+      #dialog-feedback {
+        margin-top: 14px; min-height: 20px;
+        font-size: 14px; font-weight: 500;
+      }
+      #dialog-feedback.correct { color: var(--accent); }
+      #dialog-feedback.wrong { color: #e88; }
+
+      /* Экран победы */
+      #win-box {
+        text-align: center;
+        max-width: 440px;
+      }
+      #win-box h1 { font-size: 32px; margin: 0 0 12px; }
+      #win-box p { font-size: 15px; margin-bottom: 20px; }
+      #win-restart {
+        background: var(--accent);
+        color: #1a1a2e;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      #win-restart:hover { background: #a0e5c2; }
     </style>
   </head>
   <body>
     <div id="game-root">
       <canvas id="game" width="600" height="600"></canvas>
       <aside id="sidebar">
-        <h1>Лабиринт</h1>
+        <h1 id="level-title">Лабиринт</h1>
         <p>Управление: <kbd>← ↑ → ↓</kbd></p>
         <p>Говорить: <kbd>Enter</kbd></p>
         <p>Загадок решено: <span id="solved-count">0/0</span></p>
         <p id="status">Загрузка...</p>
       </aside>
     </div>
+
+    <div id="dialog-overlay">
+      <div id="dialog-box">
+        <h2 id="dialog-name"></h2>
+        <p id="dialog-question"></p>
+        <div id="dialog-options"></div>
+        <div id="dialog-feedback"></div>
+      </div>
+    </div>
+
+    <div id="win-overlay">
+      <div id="win-box">
+        <h1>🏆 Клад твой!</h1>
+        <p>Ты прошёл подземелье и разгадал все загадки древних стражей.</p>
+        <button id="win-restart">Играть снова</button>
+      </div>
+    </div>
+
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>
