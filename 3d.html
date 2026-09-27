@@ -382,31 +382,55 @@
       // Диагностика: если Three.js или модули не грузятся — покажем ошибку на экране,
       // а не чёрный canvas. Спасает на старых браузерах / Vivo Browser / offline.
       window.__mazeStarted = false;
-      const showError = (msg) => {
+      const collectDiagnostic = () => {
+        let webglInfo = 'not tested';
+        try {
+          const c = document.createElement('canvas');
+          const gl = c.getContext('webgl2') || c.getContext('webgl') || c.getContext('experimental-webgl');
+          if (gl) {
+            const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+            const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : 'unknown';
+            const type = c.getContext('webgl2') ? 'WebGL2' : 'WebGL1';
+            webglInfo = type + ' · ' + renderer;
+          } else {
+            webglInfo = 'НЕТ WebGL';
+          }
+        } catch (_) { webglInfo = 'ошибка проверки WebGL'; }
+        return {
+          ua: navigator.userAgent,
+          webgl: webglInfo,
+          importmap: (HTMLScriptElement.supports?.('importmap') === true) ? 'yes' : 'no',
+          shim: typeof importShim !== 'undefined' ? 'loaded' : 'not loaded',
+        };
+      };
+      const showError = (msg, stack) => {
+        const d = collectDiagnostic();
         let box = document.getElementById('boot-error');
         if (!box) {
           box = document.createElement('div');
           box.id = 'boot-error';
-          box.style.cssText = 'position:fixed;inset:0;background:#0a0a14;color:#eaeaea;font-family:system-ui,sans-serif;padding:24px;overflow:auto;z-index:9999;';
+          box.style.cssText = 'position:fixed;inset:0;background:#0a0a14;color:#eaeaea;font-family:system-ui,sans-serif;padding:16px;overflow:auto;z-index:9999;font-size:13px;';
           document.body?.appendChild(box);
         }
         box.innerHTML = `
-          <h2 style="color:#e88;margin:0 0 12px;">Не удалось загрузить 3D-версию</h2>
-          <p style="line-height:1.5;color:#d0d0e0;">${msg}</p>
-          <p style="line-height:1.5;color:#d0d0e0;margin-top:16px;">Что попробовать:</p>
-          <ul style="line-height:1.7;color:#d0d0e0;">
-            <li>Открыть в <b>Chrome</b> (не в стандартном браузере Vivo/MIUI/Samsung)</li>
-            <li>Отключить блокировщики рекламы</li>
-            <li>Проверить интернет — 3D грузит Three.js с CDN</li>
-          </ul>
-          <p style="margin-top:20px;"><a href="./2d.html" style="color:#7ed6a5;font-size:16px;">→ Попробовать 2D-версию</a></p>
+          <h2 style="color:#e88;margin:0 0 12px;font-size:18px;">Не удалось загрузить 3D</h2>
+          <p style="line-height:1.5;color:#d0d0e0;word-break:break-word;">${msg}</p>
+          ${stack ? '<pre style="background:#1a1a28;padding:8px;border-radius:6px;overflow:auto;font-size:11px;color:#aac;">' + stack + '</pre>' : ''}
+          <div style="margin-top:14px;padding:10px;background:#1a1a28;border-radius:8px;font-size:11px;color:#8a8;">
+            <div><b>WebGL:</b> ${d.webgl}</div>
+            <div><b>importmap:</b> ${d.importmap}</div>
+            <div><b>polyfill:</b> ${d.shim}</div>
+            <div style="margin-top:6px;word-break:break-all;"><b>UA:</b> ${d.ua}</div>
+          </div>
+          <p style="margin-top:16px;"><a href="./2d.html" style="color:#7ed6a5;font-size:15px;">→ Попробовать 2D-версию</a></p>
         `;
       };
       window.addEventListener('error', (e) => {
-        showError('Ошибка: ' + (e.message || e.error?.message || 'unknown') + (e.filename ? ' в ' + e.filename : ''));
+        showError((e.message || e.error?.message || 'unknown') + (e.filename ? ' в ' + e.filename : ''), e.error?.stack);
       });
       window.addEventListener('unhandledrejection', (e) => {
-        showError('Отклонённый Promise: ' + (e.reason?.message || e.reason || 'unknown'));
+        const r = e.reason;
+        showError('Promise rejected: ' + (r?.message || r || 'unknown'), r?.stack);
       });
       // Таймаут: если main() не начался за 12 сек — вероятно упал импорт
       setTimeout(() => {

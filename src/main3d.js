@@ -63,7 +63,10 @@ async function main() {
 
   fullscreenBtn?.addEventListener('click', () => {
     if (document.fullscreenElement) {
-      document.exitFullscreen?.();
+      try {
+        const p = document.exitFullscreen?.();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+      } catch (_) {}
       fullscreenBtn.textContent = '⛶ На весь экран';
     } else {
       document.documentElement.requestFullscreen?.().then(() => {
@@ -159,7 +162,10 @@ async function main() {
   sceneCanvas.addEventListener('click', () => {
     if (state.current !== STATE.EXPLORING) return;
     if (document.pointerLockElement === sceneCanvas) return;
-    sceneCanvas.requestPointerLock?.();
+    try {
+      const p = sceneCanvas.requestPointerLock?.();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch (_) { /* fullscreen/pointerlock may be blocked — ignore */ }
   });
 
   document.addEventListener('pointerlockchange', () => {
@@ -295,7 +301,9 @@ async function main() {
       if (!near) return;
       state.current = STATE.DIALOGUE;
       // В FPS-режиме отпускаем pointer lock, чтобы игрок мог кликать по вариантам
-      if (fpsMode) document.exitPointerLock?.();
+      if (fpsMode) {
+        try { document.exitPointerLock?.(); } catch (_) {}
+      }
       updateHUD();
       openDialogue(
         near,
@@ -389,7 +397,12 @@ async function main() {
   animate();
   updateHUD();
 
-  const startMusic = () => startAmbient();
+  const startMusic = () => {
+    try {
+      const p = startAmbient();
+      if (p && typeof p.catch === 'function') p.catch(() => {});
+    } catch (_) {}
+  };
   window.addEventListener('keydown', startMusic, { once: true });
   window.addEventListener('click', startMusic, { once: true });
 }
