@@ -217,6 +217,15 @@
       @media (hover: none) and (pointer: coarse) {
         #touch-controls { display: flex; }
       }
+      html.touch #touch-controls { display: flex; }
+      html.touch #game-root {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        align-items: stretch;
+      }
+      html.touch canvas { width: 100%; }
+      html.touch #sidebar { min-width: 0; width: 100%; padding: 10px; }
 
       @media (max-width: 900px) {
         #game-root {
@@ -301,6 +310,14 @@
         <button id="win-restart">Играть снова</button>
       </div>
     </div>
+
+    <script>
+      (function () {
+        const isTouch = 'ontouchstart' in window
+          || (navigator.maxTouchPoints || 0) > 0;
+        if (isTouch) document.documentElement.classList.add('touch');
+      })();
+    </script>
 
     <div id="touch-controls">
       <div class="side">

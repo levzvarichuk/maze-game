@@ -160,12 +160,23 @@
       }
       #btn-interact:active { background: rgba(160,229,194,0.9); }
 
-      /* Показать touch-контролы на touch-устройствах */
-      @media (hover: none) and (pointer: coarse) {
-        #touch-controls { display: flex; }
-        #fps-hint { display: none; }
-        #crosshair { display: none; }
+      /* JS-детект touch-устройств (надёжнее чем media query — Vivo/MIUI
+         иногда рапортуют pointer:fine несмотря на реальный тач) */
+      html.touch #touch-controls { display: flex; }
+      html.touch #fps-hint { display: none; }
+      html.touch #crosshair { display: none; }
+      html.touch #game-root {
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+        align-items: stretch;
       }
+      html.touch #scene-wrap { display: block; width: 100%; }
+      html.touch #scene { width: 100%; height: auto; aspect-ratio: 4 / 3; }
+      html.touch #sidebar { min-width: 0; width: 100%; padding: 10px; }
+      html.touch #minimap { margin: 8px auto 0; width: 140px; height: 140px; }
+      html.touchh1 { font-size: 16px; }
+      html.touchp { font-size: 13px; margin: 4px 0; }
 
       /* Планшет / небольшие экраны */
       @media (max-width: 900px) {
@@ -315,6 +326,20 @@
         animation: pop 0.18s ease-out;
       }
     </style>
+    <script>
+      // Раннее touch-детект: добавляем класс до отрисовки
+      (function () {
+        const isTouch = 'ontouchstart' in window
+          || (navigator.maxTouchPoints || 0) > 0
+          || (navigator.msMaxTouchPoints || 0) > 0;
+        if (isTouch) {
+          document.documentElement.classList.add('touch');
+          document.addEventListener('DOMContentLoaded', () => {
+            document.body.classList.add('touch');
+          });
+        }
+      })();
+    </script>
     <script>
       // Диагностика: если Three.js или модули не грузятся — покажем ошибку на экране,
       // а не чёрный canvas. Спасает на старых браузерах / Vivo Browser / offline.
