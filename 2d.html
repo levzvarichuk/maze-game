@@ -3,11 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Лабиринт с загадками — 3D</title>
+    <title>Лабиринт с загадками</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1a2e'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23f7d774'/%3E%3Ccircle cx='13' cy='13' r='2.5' fill='%23fff3b0'/%3E%3C/svg%3E" />
     <style>
       :root {
-        --bg: #0a0a14;
+        --bg: #1a1a2e;
         --panel: #22223b;
         --border: #3a3a5c;
         --text: #eaeaea;
@@ -34,14 +34,12 @@
         padding: 24px;
         max-width: 100vw;
       }
-      #scene {
-        width: 720px;
-        height: 540px;
-        max-width: 100%;
-        background: #000;
+      canvas {
+        background: #0f0f1a;
         border: 2px solid #444;
-        display: block;
-        aspect-ratio: 4 / 3;
+        image-rendering: pixelated;
+        max-width: 100%;
+        height: auto;
         touch-action: none;
       }
       #sidebar {
@@ -74,43 +72,99 @@
         font-family: inherit;
       }
       #mute-btn:hover { color: var(--text); border-color: var(--accent); }
-      #minimap {
-        display: block;
-        margin-top: 14px;
-        background: #0f0f1a;
-        border: 1px solid var(--border);
-        border-radius: 4px;
+      @keyframes pop {
+        from { transform: scale(0.9); opacity: 0; }
+        to   { transform: scale(1);   opacity: 1; }
       }
-      #scene-wrap {
-        position: relative;
-        display: inline-block;
+      #dialog-overlay.open #dialog-box,
+      #win-overlay.open #win-box {
+        animation: pop 0.18s ease-out;
       }
-      #crosshair {
-        position: absolute;
-        left: 50%; top: 50%;
-        width: 4px; height: 4px;
-        margin: -2px 0 0 -2px;
-        background: rgba(255,220,180,0.85);
-        border-radius: 50%;
-        box-shadow: 0 0 4px rgba(0,0,0,0.6);
-        pointer-events: none;
-      }
-      #fps-hint {
-        position: absolute;
-        left: 50%; bottom: 12px;
-        transform: translateX(-50%);
-        background: rgba(0,0,0,0.55);
-        color: #d0d0e0;
-        font-size: 12px;
-        padding: 4px 10px;
-        border-radius: 12px;
-        pointer-events: none;
-        opacity: 1;
-        transition: opacity 0.4s;
-      }
-      #fps-hint.hidden { opacity: 0; }
 
-      /* Touch-контролы: D-pad + кнопка Enter. Скрыты на десктопе. */
+      /* Диалог-модалка */
+      #dialog-overlay, #win-overlay {
+        position: fixed; inset: 0;
+        background: rgba(0,0,0,0.75);
+        display: none;
+        align-items: center; justify-content: center;
+        z-index: 100;
+      }
+      #dialog-overlay.open, #win-overlay.open { display: flex; }
+
+      #dialog-box, #win-box {
+        max-width: 520px; width: 90%;
+        background: var(--panel);
+        border: 2px solid var(--border);
+        border-radius: 12px;
+        padding: 28px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
+      }
+      #dialog-name {
+        margin: 0 0 10px; font-size: 20px;
+        color: var(--accent);
+        letter-spacing: 0.5px;
+      }
+      #dialog-question {
+        margin: 0 0 20px; font-size: 16px;
+        line-height: 1.5;
+        color: var(--text);
+        font-style: italic;
+      }
+      #dialog-options {
+        display: flex; flex-direction: column; gap: 10px;
+      }
+      .dialog-option {
+        background: #2a2a4a;
+        color: var(--text);
+        border: 1px solid var(--border);
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 15px;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s;
+        font-family: inherit;
+      }
+      .dialog-option:hover:not(:disabled) {
+        background: #34345a; border-color: var(--accent);
+      }
+      .dialog-option:disabled {
+        opacity: 0.5; cursor: not-allowed;
+      }
+      .dialog-option.correct {
+        background: var(--correct); border-color: var(--accent);
+      }
+      .dialog-option.wrong {
+        background: #4a2a2a; border-color: var(--wrong);
+      }
+      #dialog-feedback {
+        margin-top: 14px; min-height: 20px;
+        font-size: 14px; font-weight: 500;
+      }
+      #dialog-feedback.correct { color: var(--accent); }
+      #dialog-feedback.wrong { color: #e88; }
+
+      /* Экран победы */
+      #win-box {
+        text-align: center;
+        max-width: 440px;
+      }
+      #win-box h1 { font-size: 32px; margin: 0 0 12px; }
+      #win-box p { font-size: 15px; margin-bottom: 20px; }
+      #win-restart {
+        background: var(--accent);
+        color: #1a1a2e;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+      }
+      #win-restart:hover { background: #a0e5c2; }
+
+      /* Touch-контролы */
       #touch-controls {
         display: none;
         position: fixed;
@@ -160,14 +214,10 @@
       }
       #btn-interact:active { background: rgba(160,229,194,0.9); }
 
-      /* Показать touch-контролы на touch-устройствах */
       @media (hover: none) and (pointer: coarse) {
         #touch-controls { display: flex; }
-        #fps-hint { display: none; }
-        #crosshair { display: none; }
       }
 
-      /* Планшет / небольшие экраны */
       @media (max-width: 900px) {
         #game-root {
           flex-direction: column;
@@ -175,14 +225,10 @@
           padding: 12px;
           align-items: stretch;
         }
-        #scene-wrap { display: block; width: 100%; }
-        #scene { width: 100%; height: auto; }
+        canvas { width: 100%; }
         #sidebar { min-width: 0; width: 100%; }
-        #minimap { margin: 12px auto 0; }
       }
 
-      /* Телефон */
-      /* Fullscreen: canvas растягивается, sidebar остаётся справа */
       :fullscreen #game-root, :-webkit-full-screen #game-root {
         width: 100vw;
         height: 100vh;
@@ -193,23 +239,12 @@
         box-sizing: border-box;
         align-items: stretch;
       }
-      :fullscreen #scene-wrap, :-webkit-full-screen #scene-wrap {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 0;
-      }
-      :fullscreen #scene, :-webkit-full-screen #scene {
-        width: 100%;
-        height: 100%;
-        max-width: 100%;
-        max-height: 100%;
+      :fullscreen canvas, :-webkit-full-screen canvas {
+        max-height: 100vh;
       }
       :fullscreen #sidebar, :-webkit-full-screen #sidebar {
         width: 260px;
         flex-shrink: 0;
-        overflow-y: auto;
       }
       #fullscreen-btn {
         margin-top: 8px;
@@ -230,120 +265,23 @@
         #sidebar { padding: 10px; }
         h1 { font-size: 16px; }
         p { font-size: 13px; margin: 4px 0; }
-        #minimap { width: 140px; height: 140px; }
         #game-root { padding: 8px; }
       }
-      #view-toggle {
-        display: block;
-        margin-top: 10px;
-        color: var(--muted);
-        font-size: 12px;
-        text-decoration: none;
-      }
-      #view-toggle:hover { color: var(--accent); }
-
-      /* Диалог + Win (те же классы что в 2D-версии) */
-      #dialog-overlay, #win-overlay {
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,0.75);
-        display: none;
-        align-items: center; justify-content: center;
-        z-index: 100;
-      }
-      #dialog-overlay.open, #win-overlay.open { display: flex; }
-      #dialog-box, #win-box {
-        max-width: 520px; width: 90%;
-        background: var(--panel);
-        border: 2px solid var(--border);
-        border-radius: 12px;
-        padding: 28px;
-        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-      }
-      #dialog-name {
-        margin: 0 0 10px; font-size: 20px;
-        color: var(--accent); letter-spacing: 0.5px;
-      }
-      #dialog-question {
-        margin: 0 0 20px; font-size: 16px; line-height: 1.5;
-        color: var(--text); font-style: italic;
-      }
-      #dialog-options { display: flex; flex-direction: column; gap: 10px; }
-      .dialog-option {
-        background: #2a2a4a;
-        color: var(--text);
-        border: 1px solid var(--border);
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-size: 15px;
-        text-align: left;
-        cursor: pointer;
-        transition: background 0.15s, border-color 0.15s;
-        font-family: inherit;
-      }
-      .dialog-option:hover:not(:disabled) {
-        background: #34345a; border-color: var(--accent);
-      }
-      .dialog-option:disabled { opacity: 0.5; cursor: not-allowed; }
-      .dialog-option.correct {
-        background: var(--correct); border-color: var(--accent);
-      }
-      .dialog-option.wrong {
-        background: #4a2a2a; border-color: var(--wrong);
-      }
-      #dialog-feedback {
-        margin-top: 14px; min-height: 20px;
-        font-size: 14px; font-weight: 500;
-      }
-      #dialog-feedback.correct { color: var(--accent); }
-      #dialog-feedback.wrong { color: #e88; }
-      #win-box { text-align: center; max-width: 440px; }
-      #win-box h1 { font-size: 32px; margin: 0 0 12px; }
-      #win-box p { font-size: 15px; margin-bottom: 20px; }
-      #win-restart {
-        background: var(--accent); color: #1a1a2e;
-        border: none; padding: 12px 24px; border-radius: 8px;
-        font-size: 15px; font-weight: 600; cursor: pointer;
-        font-family: inherit;
-      }
-      #win-restart:hover { background: #a0e5c2; }
-      @keyframes pop {
-        from { transform: scale(0.9); opacity: 0; }
-        to   { transform: scale(1);   opacity: 1; }
-      }
-      #dialog-overlay.open #dialog-box,
-      #win-overlay.open #win-box {
-        animation: pop 0.18s ease-out;
-      }
     </style>
-    <script type="importmap">
-    {
-      "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-      }
-    }
-    </script>
   </head>
   <body>
     <div id="game-root">
-      <div id="scene-wrap">
-        <canvas id="scene" width="720" height="540"></canvas>
-        <div id="crosshair"></div>
-        <div id="fps-hint">Клик по сцене — FPS-режим (мышь + WASD). Esc — выйти.</div>
-      </div>
+      <canvas id="game" width="600" height="600"></canvas>
       <aside id="sidebar">
-        <h1 id="level-title">Лабиринт 3D</h1>
-        <p>Шаг: <kbd>↑</kbd> <kbd>↓</kbd></p>
-        <p>Поворот: <kbd>←</kbd> <kbd>→</kbd></p>
-        <p>FPS: <kbd>клик</kbd> + <kbd>WASD</kbd> + <kbd>мышь</kbd> <span style="color:var(--muted);font-size:11px;">(бег — Shift)</span></p>
+        <h1 id="level-title">Лабиринт</h1>
+        <p>Управление: <kbd>← ↑ → ↓</kbd></p>
         <p>Говорить: <kbd>Enter</kbd></p>
         <p>Загадок решено: <span id="solved-count">0/0</span></p>
         <p id="status">Загрузка...</p>
         <p id="hint" class="hint"></p>
         <button id="mute-btn" type="button">🔊 Звук</button>
         <button id="fullscreen-btn" type="button">⛶ На весь экран</button>
-        <canvas id="minimap" width="180" height="180"></canvas>
-        <a id="view-toggle" href="./2d.html">← вернуться в 2D-версию</a>
+        <a href="./3d.html" style="display:block;margin-top:10px;color:var(--muted);font-size:12px;text-decoration:none;">→ попробовать 3D-версию</a>
       </aside>
     </div>
 
@@ -359,7 +297,7 @@
     <div id="win-overlay">
       <div id="win-box">
         <h1>🏆 Клад твой!</h1>
-        <p>Ты прошёл 3D-подземелье и разгадал все загадки древних стражей.</p>
+        <p>Ты прошёл подземелье и разгадал все загадки древних стражей.</p>
         <button id="win-restart">Играть снова</button>
       </div>
     </div>
@@ -367,10 +305,10 @@
     <div id="touch-controls">
       <div class="side">
         <div class="dpad">
-          <button class="up" data-key="ArrowUp" aria-label="Вперёд">↑</button>
+          <button class="up" data-key="ArrowUp" aria-label="Вверх">↑</button>
           <button class="left" data-key="ArrowLeft" aria-label="Влево">←</button>
           <button class="right" data-key="ArrowRight" aria-label="Вправо">→</button>
-          <button class="down" data-key="ArrowDown" aria-label="Назад">↓</button>
+          <button class="down" data-key="ArrowDown" aria-label="Вниз">↓</button>
         </div>
       </div>
       <div class="side">
@@ -379,10 +317,8 @@
     </div>
 
     <script>
-      // Touch-кнопки диспатчат синтетические keydown-события
       const dispatchKey = (key) => {
-        const evt = new KeyboardEvent('keydown', { key, bubbles: true });
-        window.dispatchEvent(evt);
+        window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
       };
       document.querySelectorAll('#touch-controls button[data-key]').forEach((btn) => {
         const key = btn.dataset.key;
@@ -392,11 +328,10 @@
     </script>
 
     <script>
-      // Cache-buster: браузер держит ES-modules в памяти между reload'ами.
-      // Добавляем ?v=<ts> — модуль имеет новый URL, всегда свежий.
+      // Cache-buster для ES-modules (см. 3d.html)
       const s = document.createElement('script');
       s.type = 'module';
-      s.src = './src/main3d.js?v=' + Date.now();
+      s.src = './src/main.js?v=' + Date.now();
       document.body.appendChild(s);
     </script>
   </body>

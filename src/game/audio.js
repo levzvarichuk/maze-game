@@ -45,63 +45,141 @@ export const sounds = {
   locked:  () => beep({ freq: 140, dur: 0.22, type: 'sawtooth', gain: 0.05, sweep: -30 }),
 };
 
-/* ---------- Фоновая музыка: мрачный dungeon ambient ---------- */
+/* ---------- Фоновая музыка: фортепианные арпеджио (Cmaj7 → Am7 → Fmaj7 → G) ---------- */
 
-const AMBIENT_NOTES = [293.66, 349.23, 392.00, 440.00, 523.25]; // D-минор пентатоника
-const DRONE_FREQS = [73.42, 110.00]; // D2 + A2 (квинта)
+// Аккорды в частотах (Hz). Каждый — набор из 4 нот в возрастающем порядке.
+// Прогрессия I - vi - IV - V — «Ghibli/медитация», консонансно и открыто.
+const CHORDS = [
+  [261.63, 329.63, 392.00, 493.88], // Cmaj7: C4 E4 G4 B4
+  [220.00, 261.63, 329.63, 392.00], // Am7:   A3 C4 E4 G4
+  [174.61, 261.63, 349.23, 440.00], // Fmaj7: F3 C4 F4 A4
+  [196.00, 293.66, 392.00, 493.88], // G7:    G3 D4 G4 B4
+];
+// Паттерн арпеджио — восходяще-нисходящий по 4 тонам аккорда
+const ARP_PATTERN = [0, 1, 2, 3, 2, 3, 1, 0];
+const NOTE_INTERVAL = 1.1; // сек между нотами → ~55 BPM
+const NOTE_DUR = 2.6;      // длительность каждой ноты (хвост перекрывается)
+
+let arpStep = 0;
+let musicDelay = null;
+let musicLowpass = null;
+
+// Фортепианная нота: основа + октава + квинта октавы, ADSR pluck-envelope
+function pianoNote(ac, freq, when, peak) {
+  const dur = NOTE_DUR;
+  // Основной тон
+  const o1 = ac.createOscillator();
+  const g1 = ac.createGain();
+  o1.type = 'sine';
+  o1.frequency.value = freq;
+  g1.gain.setValueAtTime(0, when);
+  g1.gain.linearRampToValueAtTime(peak, when + 0.01);
+  g1.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  o1.connect(g1);
+  g1.connect(musicNode);
+  if (musicDelay) g1.connect(musicDelay);
+  o1.start(when);
+  o1.stop(when + dur + 0.05);
+
+  // Октава — тише, гаснет быстрее (даёт «звонкость» пианино)
+  const o2 = ac.createOscillator();
+  const g2 = ac.createGain();
+  o2.type = 'sine';
+  o2.frequency.value = freq * 2;
+  g2.gain.setValueAtTime(0, when);
+  g2.gain.linearRampToValueAtTime(peak * 0.35, when + 0.01);
+  g2.gain.exponentialRampToValueAtTime(0.0001, when + dur * 0.55);
+  o2.connect(g2);
+  g2.connect(musicNode);
+  o2.start(when);
+  o2.stop(when + dur * 0.55 + 0.05);
+
+  // Тройная октавы (квинта поверх октавы) — самая быстрая, добавляет металл-блеск
+  const o3 = ac.createOscillator();
+  const g3 = ac.createGain();
+  o3.type = 'triangle';
+  o3.frequency.value = freq * 3;
+  g3.gain.setValueAtTime(0, when);
+  g3.gain.linearRampToValueAtTime(peak * 0.12, when + 0.008);
+  g3.gain.exponentialRampToValueAtTime(0.0001, when + dur * 0.35);
+  o3.connect(g3);
+  g3.connect(musicNode);
+  o3.start(when);
+  o3.stop(when + dur * 0.35 + 0.05);
+}
 
 function scheduleAmbientNote() {
   if (!musicNode) return;
   const ac = getCtx();
-  if (!ac || !enabled) { noteTimer = setTimeout(scheduleAmbientNote, 4000); return; }
+  if (!ac || !enabled) { noteTimer = setTimeout(scheduleAmbientNote, NOTE_INTERVAL * 1000); return; }
 
-  const freq = AMBIENT_NOTES[Math.floor(Math.random() * AMBIENT_NOTES.length)];
-  const now = ac.currentTime;
-  const dur = 3.5 + Math.random() * 2.5;
+  const chordIdx = Math.floor(arpStep / ARP_PATTERN.length) % CHORDS.length;
+  const noteIdx = ARP_PATTERN[arpStep % ARP_PATTERN.length];
+  const chord = CHORDS[chordIdx];
+  const freq = chord[noteIdx];
 
-  const osc = ac.createOscillator();
-  const g = ac.createGain();
-  osc.type = 'sine';
-  osc.frequency.value = freq;
-  g.gain.setValueAtTime(0, now);
-  g.gain.linearRampToValueAtTime(0.02, now + 0.6);
-  g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
-  osc.connect(g).connect(musicNode);
-  osc.start(now);
-  osc.stop(now + dur + 0.1);
+  // Первая нота аккорда — чуть громче (акцент)
+  const isFirstOfChord = (arpStep % ARP_PATTERN.length) === 0;
+  const peak = isFirstOfChord ? 0.11 : 0.08;
 
-  noteTimer = setTimeout(scheduleAmbientNote, 4000 + Math.random() * 8000);
+  pianoNote(ac, freq, ac.currentTime, peak);
+
+  // Каждый 4-й такт (32 ноты) — добавим бас-ноту тоники аккорда для «якоря»
+  if (isFirstOfChord) {
+    const bassFreq = chord[0] / 2; // октавой ниже корня
+    const o = ac.createOscillator();
+    const g = ac.createGain();
+    o.type = 'sine';
+    o.frequency.value = bassFreq;
+    g.gain.setValueAtTime(0, ac.currentTime);
+    g.gain.linearRampToValueAtTime(0.06, ac.currentTime + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + NOTE_INTERVAL * ARP_PATTERN.length);
+    o.connect(g).connect(musicNode);
+    o.start(ac.currentTime);
+    o.stop(ac.currentTime + NOTE_INTERVAL * ARP_PATTERN.length + 0.05);
+  }
+
+  arpStep++;
+  noteTimer = setTimeout(scheduleAmbientNote, NOTE_INTERVAL * 1000);
 }
 
-export function startAmbient() {
+export async function startAmbient() {
   if (musicNode) return;
   const ac = getCtx();
   if (!ac) return;
+  try { await ac.resume(); } catch (_) { /* ignore */ }
 
+  // Master gain (управляется toggleMute) → общий lowpass → destination
   musicNode = ac.createGain();
   musicNode.gain.value = enabled ? 1 : 0;
-  musicNode.connect(ac.destination);
 
-  const now = ac.currentTime;
-  for (const f of DRONE_FREQS) {
-    const osc = ac.createOscillator();
-    const g = ac.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = f;
-    g.gain.setValueAtTime(0, now);
-    g.gain.linearRampToValueAtTime(0.05, now + 2);
-    osc.connect(g).connect(musicNode);
-    osc.start(now);
+  musicLowpass = ac.createBiquadFilter();
+  musicLowpass.type = 'lowpass';
+  musicLowpass.frequency.value = 3500; // достаточно светло для пианино
+  musicLowpass.Q.value = 0.5;
 
-    const lfo = ac.createOscillator();
-    const lfoGain = ac.createGain();
-    lfo.frequency.value = 0.08 + Math.random() * 0.1;
-    lfoGain.gain.value = 2;
-    lfo.connect(lfoGain).connect(osc.frequency);
-    lfo.start(now);
-  }
+  musicNode.connect(musicLowpass).connect(ac.destination);
 
-  noteTimer = setTimeout(scheduleAmbientNote, 3000);
+  // Большой концертный зал: длинный feedback delay
+  musicDelay = ac.createDelay(3);
+  musicDelay.delayTime.value = 0.42;
+  const delayFeedback = ac.createGain();
+  delayFeedback.gain.value = 0.5;
+  const delayLowpass = ac.createBiquadFilter();
+  delayLowpass.type = 'lowpass';
+  delayLowpass.frequency.value = 2200;
+  const delayReturn = ac.createGain();
+  delayReturn.gain.value = 0.35;
+  musicDelay.connect(delayLowpass);
+  delayLowpass.connect(delayFeedback);
+  delayFeedback.connect(musicDelay);
+  delayLowpass.connect(delayReturn);
+  delayReturn.connect(musicNode);
+
+  arpStep = 0;
+
+  // Первая нота — почти сразу, чтобы юзер услышал что музыка есть
+  noteTimer = setTimeout(scheduleAmbientNote, 400);
 }
 
 export function stopAmbient() {

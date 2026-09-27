@@ -4,195 +4,106 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Лабиринт с загадками</title>
+    <meta name="description" content="Учебная браузерная игра — лабиринт с NPC-стражами и загадками. 2D и 3D-версии на vanilla JS + Three.js." />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Лабиринт с загадками" />
+    <meta property="og:description" content="2D + 3D игра-лабиринт с загадками. Разгадай 5 загадок древних стражей — открой клад." />
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Лабиринт с загадками" />
+    <meta name="twitter:description" content="2D + 3D лабиринт с загадками, атмосферное подземелье." />
+
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%231a1a2e'/%3E%3Ccircle cx='16' cy='16' r='9' fill='%23f7d774'/%3E%3Ccircle cx='13' cy='13' r='2.5' fill='%23fff3b0'/%3E%3C/svg%3E" />
     <style>
-      :root {
-        --bg: #1a1a2e;
-        --panel: #22223b;
-        --border: #3a3a5c;
-        --text: #eaeaea;
-        --muted: #8888aa;
-        --accent: #7ed6a5;
-        --wrong: #b04a4a;
-        --correct: #4a9a6a;
-      }
       * { box-sizing: border-box; }
       body {
         margin: 0;
         min-height: 100vh;
         display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        background: var(--bg);
-        color: var(--text);
+        background: radial-gradient(ellipse at center, #22223b 0%, #0a0a14 70%);
+        color: #eaeaea;
         font-family: system-ui, -apple-system, sans-serif;
-      }
-      #game-root {
-        display: flex;
-        gap: 24px;
-        align-items: flex-start;
         padding: 24px;
       }
-      canvas {
-        background: #0f0f1a;
-        border: 2px solid #444;
-        image-rendering: pixelated;
-      }
-      #sidebar {
-        min-width: 220px;
-        padding: 16px;
-        background: var(--panel);
-        border-radius: 8px;
-      }
-      h1 { margin: 0 0 12px; font-size: 18px; }
-      p  { margin: 6px 0; font-size: 14px; opacity: 0.9; }
-      kbd {
-        background: #444; padding: 2px 6px;
-        border-radius: 4px; font-size: 12px;
-      }
-      .hint {
-        min-height: 20px;
-        color: var(--accent);
-        font-size: 13px;
-        font-style: italic;
-      }
-      #mute-btn {
-        margin-top: 12px;
-        background: transparent;
-        color: var(--muted);
-        border: 1px solid var(--border);
-        padding: 6px 12px;
-        border-radius: 6px;
-        font-size: 13px;
-        cursor: pointer;
-        font-family: inherit;
-      }
-      #mute-btn:hover { color: var(--text); border-color: var(--accent); }
-      @keyframes pop {
-        from { transform: scale(0.9); opacity: 0; }
-        to   { transform: scale(1);   opacity: 1; }
-      }
-      #dialog-overlay.open #dialog-box,
-      #win-overlay.open #win-box {
-        animation: pop 0.18s ease-out;
-      }
-
-      /* Диалог-модалка */
-      #dialog-overlay, #win-overlay {
-        position: fixed; inset: 0;
-        background: rgba(0,0,0,0.75);
-        display: none;
-        align-items: center; justify-content: center;
-        z-index: 100;
-      }
-      #dialog-overlay.open, #win-overlay.open { display: flex; }
-
-      #dialog-box, #win-box {
-        max-width: 520px; width: 90%;
-        background: var(--panel);
-        border: 2px solid var(--border);
-        border-radius: 12px;
-        padding: 28px;
-        box-shadow: 0 8px 40px rgba(0,0,0,0.6);
-      }
-      #dialog-name {
-        margin: 0 0 10px; font-size: 20px;
-        color: var(--accent);
+      h1 {
+        font-size: clamp(28px, 5vw, 44px);
+        margin: 0 0 8px;
         letter-spacing: 0.5px;
       }
-      #dialog-question {
-        margin: 0 0 20px; font-size: 16px;
-        line-height: 1.5;
-        color: var(--text);
-        font-style: italic;
-      }
-      #dialog-options {
-        display: flex; flex-direction: column; gap: 10px;
-      }
-      .dialog-option {
-        background: #2a2a4a;
-        color: var(--text);
-        border: 1px solid var(--border);
-        padding: 12px 16px;
-        border-radius: 8px;
+      .sub {
+        color: #8888aa;
         font-size: 15px;
-        text-align: left;
-        cursor: pointer;
-        transition: background 0.15s, border-color 0.15s;
-        font-family: inherit;
-      }
-      .dialog-option:hover:not(:disabled) {
-        background: #34345a; border-color: var(--accent);
-      }
-      .dialog-option:disabled {
-        opacity: 0.5; cursor: not-allowed;
-      }
-      .dialog-option.correct {
-        background: var(--correct); border-color: var(--accent);
-      }
-      .dialog-option.wrong {
-        background: #4a2a2a; border-color: var(--wrong);
-      }
-      #dialog-feedback {
-        margin-top: 14px; min-height: 20px;
-        font-size: 14px; font-weight: 500;
-      }
-      #dialog-feedback.correct { color: var(--accent); }
-      #dialog-feedback.wrong { color: #e88; }
-
-      /* Экран победы */
-      #win-box {
+        margin-bottom: 32px;
         text-align: center;
-        max-width: 440px;
+        max-width: 500px;
+        line-height: 1.55;
       }
-      #win-box h1 { font-size: 32px; margin: 0 0 12px; }
-      #win-box p { font-size: 15px; margin-bottom: 20px; }
-      #win-restart {
-        background: var(--accent);
-        color: #1a1a2e;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-        font-size: 15px;
-        font-weight: 600;
-        cursor: pointer;
-        font-family: inherit;
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        max-width: 720px;
+        width: 100%;
       }
-      #win-restart:hover { background: #a0e5c2; }
+      .card {
+        background: #22223b;
+        border: 2px solid #3a3a5c;
+        border-radius: 12px;
+        padding: 24px;
+        text-decoration: none;
+        color: inherit;
+        transition: border-color 0.15s, transform 0.15s;
+        display: block;
+      }
+      .card:hover {
+        border-color: #7ed6a5;
+        transform: translateY(-3px);
+      }
+      .card h2 {
+        margin: 0 0 8px;
+        font-size: 20px;
+        color: #7ed6a5;
+      }
+      .card p {
+        margin: 0 0 12px;
+        color: #d0d0e0;
+        font-size: 14px;
+        line-height: 1.5;
+      }
+      .card .hint {
+        color: #8888aa;
+        font-size: 12px;
+      }
+      footer {
+        margin-top: 40px;
+        color: #666;
+        font-size: 12px;
+      }
+      footer a { color: #8888aa; }
     </style>
   </head>
   <body>
-    <div id="game-root">
-      <canvas id="game" width="600" height="600"></canvas>
-      <aside id="sidebar">
-        <h1 id="level-title">Лабиринт</h1>
-        <p>Управление: <kbd>← ↑ → ↓</kbd></p>
-        <p>Говорить: <kbd>Enter</kbd></p>
-        <p>Загадок решено: <span id="solved-count">0/0</span></p>
-        <p id="status">Загрузка...</p>
-        <p id="hint" class="hint"></p>
-        <button id="mute-btn" type="button">🔊 Звук</button>
-        <a href="./3d.html" style="display:block;margin-top:10px;color:var(--muted);font-size:12px;text-decoration:none;">→ попробовать 3D-версию</a>
-      </aside>
+    <h1>🗝️ Лабиринт с загадками</h1>
+    <p class="sub">Разгадай 5 загадок древних стражей — и печать спадёт с клада. Выбирай, как играть.</p>
+    <div class="cards">
+      <a class="card" href="./2d.html">
+        <h2>2D · сверху</h2>
+        <p>Классический top-down. Играется стрелками, лабиринт видно целиком.</p>
+        <span class="hint">Быстро, просто, кросс-платформенно.</span>
+      </a>
+      <a class="card" href="./3d.html">
+        <h2>3D · от первого лица</h2>
+        <p>Grimrock-стайл или полноценный FPS (клик по сцене). Факелы, туман, атмосфера.</p>
+        <span class="hint">Мышь + WASD или стрелки. Fullscreen поддерживается.</span>
+      </a>
     </div>
-
-    <div id="dialog-overlay">
-      <div id="dialog-box">
-        <h2 id="dialog-name"></h2>
-        <p id="dialog-question"></p>
-        <div id="dialog-options"></div>
-        <div id="dialog-feedback"></div>
-      </div>
-    </div>
-
-    <div id="win-overlay">
-      <div id="win-box">
-        <h1>🏆 Клад твой!</h1>
-        <p>Ты прошёл подземелье и разгадал все загадки древних стражей.</p>
-        <button id="win-restart">Играть снова</button>
-      </div>
-    </div>
-
-    <script type="module" src="./src/main.js"></script>
+    <footer>
+      Учебный проект · <a href="https://github.com/alevo4kina/maze-game">Исходники на GitHub</a>
+    </footer>
   </body>
 </html>

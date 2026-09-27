@@ -16,9 +16,30 @@ export function createPlayer3D(start) {
   return {
     x: start.x,
     y: start.y,
-    heading: HEADING.SOUTH, // смотрим внутрь лабиринта
+    heading: HEADING.SOUTH,
+    // FPS-режим: continuous позиция и pitch (наклон вверх/вниз)
+    px: start.x,
+    pz: start.y,
+    pitch: 0,
     solvedCount: 0,
   };
+}
+
+// Синхронизация float-полей со step-полями (при входе в FPS-режим)
+export function syncFPSFromStep(player) {
+  player.px = player.x;
+  player.pz = player.y;
+}
+
+// Обратная синхронизация: округление FPS-позиции в клетку, heading по yaw
+export function syncStepFromFPS(player, yaw) {
+  player.x = Math.round(player.px);
+  player.y = Math.round(player.pz);
+  // Yaw → heading: 0 = -Z (север), -PI/2 = +X (восток) и т.д.
+  const norm = ((yaw % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+  const step = Math.round(-norm / (Math.PI / 2));
+  player.heading = ((step % 4) + 4) % 4;
+  player.pitch = 0;
 }
 
 export function forwardStep(player) {

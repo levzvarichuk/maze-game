@@ -78,6 +78,19 @@ async function main() {
     muteBtn.textContent = on ? '🔊 Звук' : '🔇 Тихо';
   });
 
+  const fullscreenBtn = document.getElementById('fullscreen-btn');
+  fullscreenBtn?.addEventListener('click', () => {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else document.documentElement.requestFullscreen?.().catch(() => {});
+  });
+  document.addEventListener('fullscreenchange', () => {
+    if (fullscreenBtn) {
+      fullscreenBtn.textContent = document.fullscreenElement
+        ? '✕ Свернуть'
+        : '⛶ На весь экран';
+    }
+  });
+
   bindInput({
     move: (dx, dy) => {
       if (state.current !== STATE.EXPLORING) return;
