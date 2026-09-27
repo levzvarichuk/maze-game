@@ -162,21 +162,59 @@
 
       /* JS-детект touch-устройств (надёжнее чем media query — Vivo/MIUI
          иногда рапортуют pointer:fine несмотря на реальный тач) */
+      /* На touch-устройствах — полноэкранный canvas + overlay HUD.
+         Sidebar-текст скрыт, миникарта плавает в углу. */
+      html.touch, html.touch body {
+        width: 100vw; height: 100vh;
+        overflow: hidden;
+        margin: 0;
+      }
       html.touch #touch-controls { display: flex; }
       html.touch #fps-hint { display: none; }
       html.touch #crosshair { display: none; }
       html.touch #game-root {
-        flex-direction: column;
-        gap: 12px;
-        padding: 12px;
-        align-items: stretch;
+        padding: 0;
+        gap: 0;
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        max-height: none;
       }
-      html.touch #scene-wrap { display: block; width: 100%; }
-      html.touch #scene { width: 100%; height: auto; aspect-ratio: 4 / 3; }
-      html.touch #sidebar { min-width: 0; width: 100%; padding: 10px; }
-      html.touch #minimap { margin: 8px auto 0; width: 140px; height: 140px; }
-      html.touchh1 { font-size: 16px; }
-      html.touchp { font-size: 13px; margin: 4px 0; }
+      html.touch #scene-wrap {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      html.touch #scene {
+        width: 100%;
+        height: 100%;
+        max-width: none;
+        max-height: none;
+        aspect-ratio: auto;
+        border: none;
+      }
+      html.touch #sidebar {
+        position: fixed;
+        top: 8px; right: 8px;
+        width: auto;
+        min-width: 0;
+        padding: 8px 10px;
+        background: rgba(20, 20, 35, 0.65);
+        border: 1px solid rgba(140,140,170,0.3);
+        border-radius: 8px;
+        max-width: 45vw;
+        pointer-events: none;
+      }
+      html.touch #sidebar > * { pointer-events: auto; }
+      html.touch #sidebar h1 { font-size: 13px; margin: 0 0 4px; }
+      html.touch #sidebar p { font-size: 11px; margin: 2px 0; }
+      html.touch #sidebar p:has(kbd) { display: none; }
+      html.touch #mute-btn, html.touch #fullscreen-btn,
+      html.touch #view-toggle { display: none; }
+      html.touch #minimap { display: block; margin: 6px 0 0; width: 110px; height: 110px; }
 
       /* Планшет / небольшие экраны */
       @media (max-width: 900px) {
@@ -377,6 +415,10 @@
         }
       }, 12000);
     </script>
+    <!-- Полифилл importmap для браузеров без нативной поддержки
+         (Vivo Browser, старый Samsung Internet, старый Safari до 16.4).
+         На Chrome/Firefox работает нативная поддержка, полифилл не мешает. -->
+    <script async src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js"></script>
     <script type="importmap">
     {
       "imports": {
