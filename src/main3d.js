@@ -88,11 +88,14 @@ async function main() {
 
   // FPS-режим (pointer lock + мышь + WASD)
   let fpsMode = false;
+  // Touch-режим (мобильный, без PointerLock): ↑↓ движение, ←→ поворот камеры
+  let touchMode = false;
   let camPitch = 0;
   const MOUSE_SENS = 0.0022;
   const PITCH_LIMIT = Math.PI / 2 - 0.05;
   const MOVE_SPEED = 3.2;
   const RUN_MULT = 1.7;
+  const TOUCH_TURN_SPEED = 2.4; // рад/сек
   const PLAYER_RADIUS = 0.32;
   const pressed = new Set();
   let lastTickTime = performance.now();
@@ -128,6 +131,28 @@ async function main() {
     pressed.clear();
     fpsHintEl?.classList.remove('hidden');
     updateHUD();
+  };
+
+  const enterTouchMode = () => {
+    if (touchMode || fpsMode) return;
+    touchMode = true;
+    syncFPSFromStep(player);
+    camPitch = 0;
+  };
+
+  // API для touch-кнопок из 3d.html — вызывается при touchstart/touchend
+  window.mazeInput = {
+    press(key) {
+      if (state.current !== STATE.EXPLORING) return;
+      enterTouchMode();
+      pressed.add(key);
+    },
+    release(key) {
+      pressed.delete(key);
+    },
+    interact() {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    },
   };
 
   sceneCanvas.addEventListener('click', () => {
@@ -301,14 +326,20 @@ async function main() {
     lastTickTime = now;
     sceneTime = t;
 
-    if (fpsMode && state.current === STATE.EXPLORING) {
-      // WASD относительно yaw. Forward = -Z в камерных координатах = (sin(yaw), cos(yaw))
-      // но у нас yaw увеличивается против часовой (Y-axis). Взгляд «вперёд» = -Z_world при yaw=0.
+    if ((fpsMode || touchMode) && state.current === STATE.EXPLORING) {
+      // WASD относительно yaw. Forward = -Z в камерных координатах.
       let fx = 0, fz = 0;
       if (pressed.has('w')) fz -= 1;
       if (pressed.has('s')) fz += 1;
-      if (pressed.has('a')) fx -= 1;
-      if (pressed.has('d')) fx += 1;
+      if (touchMode) {
+        // Мобильный: ← → вращают камеру (нет мыши)
+        if (pressed.has('a')) camState.yaw += TOUCH_TURN_SPEED * dt;
+        if (pressed.has('d')) camState.yaw -= TOUCH_TURN_SPEED * dt;
+      } else {
+        // Десктоп FPS: A/D — strafe в стороны
+        if (pressed.has('a')) fx -= 1;
+        if (pressed.has('d')) fx += 1;
+      }
       if (fx !== 0 || fz !== 0) {
         const len = Math.hypot(fx, fz);
         fx /= len; fz /= len;

@@ -317,14 +317,37 @@
     </div>
 
     <script>
+      // Авто-репит клавиш пока кнопка держится: каждые 130мс новое keydown
       const dispatchKey = (key) => {
         window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
       };
-      document.querySelectorAll('#touch-controls button[data-key]').forEach((btn) => {
-        const key = btn.dataset.key;
-        btn.addEventListener('touchstart', (e) => { e.preventDefault(); dispatchKey(key); }, { passive: false });
-        btn.addEventListener('click', (e) => { e.preventDefault(); dispatchKey(key); });
+      const REPEAT_MS = 130;
+      const bindTouchRepeat = (btn, key) => {
+        let timer = null;
+        const start = (e) => {
+          e.preventDefault();
+          dispatchKey(key);
+          if (timer) clearInterval(timer);
+          timer = setInterval(() => dispatchKey(key), REPEAT_MS);
+        };
+        const end = (e) => {
+          e.preventDefault();
+          if (timer) { clearInterval(timer); timer = null; }
+        };
+        btn.addEventListener('touchstart', start, { passive: false });
+        btn.addEventListener('touchend', end, { passive: false });
+        btn.addEventListener('touchcancel', end, { passive: false });
+        btn.addEventListener('pointerdown', start);
+        btn.addEventListener('pointerup', end);
+        btn.addEventListener('pointerleave', end);
+      };
+      document.querySelectorAll('#touch-controls .dpad button[data-key]').forEach((btn) => {
+        bindTouchRepeat(btn, btn.dataset.key);
       });
+      const interactBtn = document.getElementById('btn-interact');
+      const fireEnter = (e) => { e.preventDefault(); dispatchKey('Enter'); };
+      interactBtn?.addEventListener('touchstart', fireEnter, { passive: false });
+      interactBtn?.addEventListener('click', fireEnter);
     </script>
 
     <script>

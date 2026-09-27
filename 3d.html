@@ -379,16 +379,40 @@
     </div>
 
     <script>
-      // Touch-кнопки диспатчат синтетические keydown-события
-      const dispatchKey = (key) => {
-        const evt = new KeyboardEvent('keydown', { key, bubbles: true });
-        window.dispatchEvent(evt);
+      // Мобильные touch-контролы: непрерывное движение пока кнопка нажата.
+      // Стрелки → WASD в touchMode игры (main3d.js предоставляет window.mazeInput).
+      const KEY_TO_MAZE = {
+        'ArrowUp': 'w', 'ArrowDown': 's', 'ArrowLeft': 'a', 'ArrowRight': 'd',
       };
-      document.querySelectorAll('#touch-controls button[data-key]').forEach((btn) => {
-        const key = btn.dataset.key;
-        btn.addEventListener('touchstart', (e) => { e.preventDefault(); dispatchKey(key); }, { passive: false });
-        btn.addEventListener('click', (e) => { e.preventDefault(); dispatchKey(key); });
+      const bindTouchButton = (btn, mazeKey) => {
+        const start = (e) => {
+          e.preventDefault();
+          window.mazeInput?.press(mazeKey);
+        };
+        const end = (e) => {
+          e.preventDefault();
+          window.mazeInput?.release(mazeKey);
+        };
+        btn.addEventListener('touchstart', start, { passive: false });
+        btn.addEventListener('touchend', end, { passive: false });
+        btn.addEventListener('touchcancel', end, { passive: false });
+        // Fallback для мыши (desktop testing)
+        btn.addEventListener('pointerdown', start);
+        btn.addEventListener('pointerup', end);
+        btn.addEventListener('pointerleave', end);
+      };
+      document.querySelectorAll('#touch-controls .dpad button[data-key]').forEach((btn) => {
+        const mazeKey = KEY_TO_MAZE[btn.dataset.key];
+        if (mazeKey) bindTouchButton(btn, mazeKey);
       });
+      // Enter — одиночное нажатие
+      const interactBtn = document.getElementById('btn-interact');
+      const fireInteract = (e) => {
+        e.preventDefault();
+        window.mazeInput?.interact();
+      };
+      interactBtn?.addEventListener('touchstart', fireInteract, { passive: false });
+      interactBtn?.addEventListener('click', fireInteract);
     </script>
 
     <script>
