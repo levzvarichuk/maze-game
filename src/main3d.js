@@ -26,6 +26,7 @@ const fpsHintEl = document.getElementById('fps-hint');
 const fullscreenBtn = document.getElementById('fullscreen-btn');
 
 async function main() {
+  window.__mazeStarted = true;
   statusEl.textContent = 'Загрузка 3D-сцены...';
 
   const [level, riddles] = await Promise.all([

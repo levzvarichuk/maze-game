@@ -315,6 +315,43 @@
         animation: pop 0.18s ease-out;
       }
     </style>
+    <script>
+      // Диагностика: если Three.js или модули не грузятся — покажем ошибку на экране,
+      // а не чёрный canvas. Спасает на старых браузерах / Vivo Browser / offline.
+      window.__mazeStarted = false;
+      const showError = (msg) => {
+        let box = document.getElementById('boot-error');
+        if (!box) {
+          box = document.createElement('div');
+          box.id = 'boot-error';
+          box.style.cssText = 'position:fixed;inset:0;background:#0a0a14;color:#eaeaea;font-family:system-ui,sans-serif;padding:24px;overflow:auto;z-index:9999;';
+          document.body?.appendChild(box);
+        }
+        box.innerHTML = `
+          <h2 style="color:#e88;margin:0 0 12px;">Не удалось загрузить 3D-версию</h2>
+          <p style="line-height:1.5;color:#d0d0e0;">${msg}</p>
+          <p style="line-height:1.5;color:#d0d0e0;margin-top:16px;">Что попробовать:</p>
+          <ul style="line-height:1.7;color:#d0d0e0;">
+            <li>Открыть в <b>Chrome</b> (не в стандартном браузере Vivo/MIUI/Samsung)</li>
+            <li>Отключить блокировщики рекламы</li>
+            <li>Проверить интернет — 3D грузит Three.js с CDN</li>
+          </ul>
+          <p style="margin-top:20px;"><a href="./2d.html" style="color:#7ed6a5;font-size:16px;">→ Попробовать 2D-версию</a></p>
+        `;
+      };
+      window.addEventListener('error', (e) => {
+        showError('Ошибка: ' + (e.message || e.error?.message || 'unknown') + (e.filename ? ' в ' + e.filename : ''));
+      });
+      window.addEventListener('unhandledrejection', (e) => {
+        showError('Отклонённый Promise: ' + (e.reason?.message || e.reason || 'unknown'));
+      });
+      // Таймаут: если main() не начался за 12 сек — вероятно упал импорт
+      setTimeout(() => {
+        if (!window.__mazeStarted) {
+          showError('Загрузка длится дольше 12 секунд. Скорее всего Three.js не смог загрузиться из CDN (проверь интернет) или браузер не поддерживает importmap (нужен Chrome 89+ / Safari 16.4+).');
+        }
+      }, 12000);
+    </script>
     <script type="importmap">
     {
       "imports": {
